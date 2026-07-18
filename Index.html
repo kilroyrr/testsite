@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0A121F">
+<title>#AI-Kimmo Sää</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌌</text></svg>">
+<style>
+  html, body { margin: 0; background: #0A121F; color: #E9F1FA; font-family: system-ui, sans-serif; }
+  #boot { padding: 48px 24px; text-align: center; color: #8CA3BF; font-size: 15px; line-height: 1.6; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/recharts@2.15.4/umd/Recharts.min.js"></script>
+</head>
+<body>
+<div id="root"><div id="boot">Käynnistetään #AI-Kimmo Sää -sovellusta…</div></div>
+<script>
+  setTimeout(function () {
+    var r = document.getElementById("root");
+    if (r && r.dataset.mounted !== "true") {
+      r.innerHTML = '<div id="boot">Sovelluksen käynnistys epäonnistui.<br>Tarkista internetyhteys (React- ja Recharts-kirjastot ladataan CDN:stä) ja päivitä sivu.<br><small>Huom.: claude.ai:n esikatselussa ulkoiset yhteydet on estetty – lataa tiedosto ja avaa se suoraan selaimessa.</small></div>';
+    }
+  }, 6000);
+</script>
+<script>
+import { jsxDEV as _jsxDEV, Fragment as _Fragment } from "react/jsx-dev-runtime";
+const {
+  useState,
+  useEffect,
+  useRef,
+  useCallback
+} = React;
+const {
+  ComposedChart,
+  Line,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  BarChart,
+  Cell,
+  Legend
+} = Recharts;
+const PALETTE = {
+  bg: "#0A121F",
+  surface: "#111C2E",
+  surface2: "#16243A",
+  line: "#22344E",
+  text: "#E9F1FA",
+  muted: "#8CA3BF",
+  green: "#4EE6A8",
+  violet: "#9D8CFF",
+  ice: "#6FC3FF",
+  amber: "#FFC24B",
+  red: "#FF6B6B"
+};
+const WMO = {
+  0: ["Selkeää", "☀️"],
+  1: ["Enimmäkseen selkeää", "🌤️"],
+  2: ["Puolipilvistä", "⛅"],
+  3: ["Pilvistä", "☁️"],
+  45: ["Sumua", "🌫️"],
+  48: ["Huurtavaa sumua", "🌫️"],
+  51: ["Heikkoa tihkua", "🌦️"],
+  53: ["Tihkusadetta", "🌦️"],
+  55: ["Tiheää tihkua", "🌧️"],
+  56: ["Jäätävää tihkua", "🌧️"],
+  57: ["Jäätävää tihkua", "🌧️"],
+  61: ["Heikkoa vesisadetta", "🌧️"],
+  63: ["Vesisadetta", "🌧️"],
+  65: ["Voimakasta sadetta", "🌧️"],
+  66: ["Jäätävää sadetta", "🌧️"],
+  67: ["Jäätävää sadetta", "🌧️"],
+  71: ["Heikkoa lumisadetta", "🌨️"],
+  73: ["Lumisadetta", "🌨️"],
+  75: ["Sakeaa lumisadetta", "❄️"],
+  77: ["Lumijyväsiä", "🌨️"],
+  80: ["Heikkoja kuuroja", "🌦️"],
+  81: ["Sadekuuroja", "🌦️"],
+  82: ["Rajuja kuuroja", "⛈️"],
+  85: ["Lumikuuroja", "🌨️"],
+  86: ["Sakeita lumikuuroja", "❄️"],
+  95: ["Ukkosta", "⛈️"],
+  96: ["Ukkosta ja rakeita", "⛈️"],
+  99: ["Ukkosta ja rakeita", "⛈️"]
+};
+const wmo = c => WMO[c] || ["–", "☁️"];
+const COMPASS = ["P", "PKO", "KO", "IKO", "I", "IKA", "KA", "EKA", "E", "ELO", "LO", "LLO", "L", "LLU", "LU", "PLU"];
+const compass = deg => deg == null ? "–" : COMPASS[Math.round(deg % 360 / 22.5) % 16];
+const fiNum = (v, d = 1) => v == null || Number.isNaN(Number(v)) ? "–" : Number(v).toLocaleString("fi-FI", {
+  maximumFractionDigits: d,
+  minimumFractionDigits: 0
+});
+const fiDT = t => {
+  const dd = t instanceof Date ? t : new Date(t);
+  return Number.isNaN(dd.getTime()) ? "–" : dd.toLocaleString("fi-FI", {
+    day: "numeric",
+    month: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+};
+const WD = ["su", "ma", "ti", "ke", "to", "pe", "la"];
+const fiDay = isoDate => {
+  const d = new Date(isoDate + "T12:00:00");
+  return `${WD[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}.`;
+};
+const uvText = u => u == null ? "–" : u < 3 ? "matala" : u < 6 ? "kohtalainen" : u < 8 ? "korkea" : u < 11 ? "hyvin korkea" : "äärimmäinen";
+const uvColor = u => u == null ? PALETTE.muted : u < 3 ? PALETTE.green : u < 6 ? PALETTE.amber : u < 8 ? "#FF9950" : PALETTE.red;
+const aqiText = a => a == null ? "–" : a < 20 ? "hyvä" : a < 40 ? "tyydyttävä" : a < 60 ? "kohtalainen" : a < 80 ? "huono" : "erittäin huono";
+const kpColor = k => k == null ? PALETTE.muted : k < 4 ? PALETTE.green : k < 5 ? PALETTE.amber : k < 6 ? "#FF9950" : PALETTE.red;
+const G_FI = {
+  0: "ei myrskyä",
+  1: "G1 · vähäinen",
+  2: "G2 · kohtalainen",
+  3: "G3 · voimakas",
+  4: "G4 · vakava",
+  5: "G5 · äärimmäinen"
+};
+function auroraEstimate(kp) {
+  if (kp == null) return "Kp-arvoa ei saatu.";
+  if (kp >= 7) return "Revontulet mahdollisia koko maassa, myös etelärannikolla.";
+  if (kp >= 5) return "Revontulet mahdollisia Etelä- ja Keski-Suomessa asti.";
+  if (kp >= 4) return "Revontulet mahdollisia noin Oulun korkeudelle.";
+  if (kp >= 3) return "Revontulet mahdollisia Lapissa.";
+  return "Revontulet epätodennäköisiä; heikkoa aktiivisuutta korkeintaan Pohjois-Lapissa.";
+}
+function moonPhase() {
+  const synodic = 29.53058867;
+  const ref = Date.UTC(2000, 0, 6, 18, 14);
+  const days = (Date.now() - ref) / 86400000 % synodic;
+  const idx = Math.round(days / synodic * 8) % 8;
+  const names = [["Uusikuu", "🌑"], ["Kasvava sirppi", "🌒"], ["Ensimmäinen neljännes", "🌓"], ["Kasvava kupera", "🌔"], ["Täysikuu", "🌕"], ["Vähenevä kupera", "🌖"], ["Viimeinen neljännes", "🌗"], ["Vähenevä sirppi", "🌘"]];
+  return names[idx];
+}
+function rouskukeli(rain7, tAvg) {
+  if (rain7 == null || tAvg == null) return null;
+  let rainScore;
+  if (rain7 <= 5) rainScore = 8;else if (rain7 <= 20) rainScore = 8 + (rain7 - 5) / 15 * 82;else if (rain7 <= 50) rainScore = 90 + (rain7 - 20) / 30 * 10;else if (rain7 <= 90) rainScore = 100 - (rain7 - 50) / 40 * 35;else rainScore = 55;
+  let tempScore;
+  if (tAvg >= 12 && tAvg <= 19) tempScore = 100;else tempScore = Math.max(0, 100 - Math.abs(tAvg - (tAvg < 12 ? 12 : 19)) * 9);
+  const score = Math.round(0.55 * rainScore + 0.45 * tempScore);
+  const label = score >= 80 ? ["Rouskuralli! Metsään siitä.", "🍄🍄🍄"] : score >= 60 ? ["Hyvä sienikeli kehittymässä.", "🍄🍄"] : score >= 35 ? ["Kohtalainen – rouskut miettivät vielä.", "🍄"] : ["Kuivaa – rouskut pysyvät piilossa.", "🌵"];
+  return {
+    score,
+    label
+  };
+}
+const Card = ({
+  children,
+  style,
+  accent
+}) => _jsxDEV("div", {
+  className: "card",
+  style: {
+    ...(accent ? {
+      borderTop: `2px solid ${accent}`
+    } : {}),
+    ...style
+  },
+  children: children
+}, void 0, false);
+const Eyebrow = ({
+  children
+}) => _jsxDEV("div", {
+  className: "eyebrow",
+  children: children
+}, void 0, false);
+const Big = ({
+  children,
+  color,
+  className = ""
+}) => _jsxDEV("div", {
+  className: `big ${className}`,
+  style: color ? {
+    color
+  } : undefined,
+  children: children
+}, void 0, false);
+const Sub = ({
+  children
+}) => _jsxDEV("div", {
+  className: "sub",
+  children: children
+}, void 0, false);
+const Spinner = ({
+  text = "Haetaan tietoja…"
+}) => _jsxDEV("div", {
+  className: "spin-row",
+  children: [_jsxDEV("span", {
+    className: "spinner",
+    "aria-hidden": "true"
+  }, void 0, false), " ", text]
+}, void 0, true);
+const ErrBox = ({
+  children
+}) => _jsxDEV("div", {
+  className: "errbox",
+  children: children
+}, void 0, false);
+const LinkChip = ({
+  href,
+  children
+}) => _jsxDEV("a", {
+  className: "linkchip",
+  href: href,
+  target: "_blank",
+  rel: "noopener noreferrer",
+  children: [children, " ↗"]
+}, void 0, true);
+const tooltipStyle = {
+  backgroundColor: PALETTE.surface2,
+  border: `1px solid ${PALETTE.line}`,
+  borderRadius: 10,
+  color: PALETTE.text,
+  fontSize: 12
+};
+function WeatherTab({
+  city,
+  om,
+  yr,
+  fmi,
+  aq,
+  loading,
+  err
+}) {
+  if (loading) return _jsxDEV(Card, {
+    children: _jsxDEV(Spinner, {
+      text: `Haetaan sää: ${city.name}…`
+    }, void 0, false)
+  }, void 0, false);
+  if (err || !om) return _jsxDEV(Card, {
+    children: _jsxDEV(ErrBox, {
+      children: ["Sään haku epäonnistui (", String(err || "ei dataa"), "). Tarkista internetyhteys ja kokeile Päivitä-painiketta hetken kuluttua."]
+    }, void 0, true)
+  }, void 0, false);
+  const cur = om.current;
+  const todayIdx = Math.max(0, om.daily.time.indexOf(String(cur.time).slice(0, 10)));
+  const hourIdx = Math.max(0, om.hourly.time.indexOf(String(cur.time).slice(0, 13) + ":00"));
+  const uvNow = om.hourly.uv_index ? om.hourly.uv_index[hourIdx] : null;
+  const d = om.daily;
+  const days15 = d.time.slice(todayIdx, todayIdx + 15).map((t, k) => {
+    const i = todayIdx + k;
+    return {
+      day: fiDay(t),
+      tmax: d.temperature_2m_max[i],
+      tmin: d.temperature_2m_min[i],
+      sade: d.precipitation_sum[i],
+      sadeTn: d.precipitation_probability_max ? d.precipitation_probability_max[i] : null,
+      tuuli: d.wind_speed_10m_max[i],
+      puuska: d.wind_gusts_10m_max[i],
+      uv: d.uv_index_max ? d.uv_index_max[i] : null,
+      code: d.weather_code[i]
+    };
+  });
+  const hours48 = om.hourly.time.slice(hourIdx, hourIdx + 48).map((t, k) => {
+    const i = hourIdx + k;
+    return {
+      h: t.slice(11, 16),
+      t: om.hourly.temperature_2m[i],
+      sade: om.hourly.precipitation[i]
+    };
+  });
+  const past7 = d.time.slice(Math.max(0, todayIdx - 7), todayIdx);
+  const rain7 = past7.length ? past7.reduce((s, _, k) => s + (d.precipitation_sum[todayIdx - past7.length + k] || 0), 0) : null;
+  const tAvg7 = past7.length ? past7.reduce((s, _, k) => {
+    const i = todayIdx - past7.length + k;
+    return s + (d.temperature_2m_max[i] + d.temperature_2m_min[i]) / 2;
+  }, 0) / past7.length : null;
+  const rk = rouskukeli(rain7, tAvg7);
+  const sunrise = d.sunrise ? d.sunrise[todayIdx] : null;
+  const sunset = d.sunset ? d.sunset[todayIdx] : null;
+  let dayLen = null;
+  if (sunrise && sunset) {
+    const ms = new Date(sunset) - new Date(sunrise);
+    if (ms > 0) dayLen = `${Math.floor(ms / 3600000)} h ${Math.round(ms % 3600000 / 60000)} min`;
+  }
+  const [moonName, moonEmoji] = moonPhase();
+  const [descNow, emojiNow] = wmo(cur.weather_code);
+  const yrTemp = yr?.properties?.timeseries?.[0]?.data?.instant?.details;
+  const yrRain = yr?.properties?.timeseries?.[0]?.data?.next_1_hours?.details?.precipitation_amount;
+  return _jsxDEV("div", {
+    className: "stack",
+    children: [_jsxDEV(Card, {
+      accent: PALETTE.green,
+      children: [_jsxDEV(Eyebrow, {
+        children: ["Nyt · ", city.name, city.admin1 ? `, ${city.admin1}` : "", " · Open-Meteo"]
+      }, void 0, true), _jsxDEV("div", {
+        className: "now-grid",
+        children: [_jsxDEV("div", {
+          children: [_jsxDEV(Big, {
+            children: [emojiNow, " ", fiNum(cur.temperature_2m), " °C"]
+          }, void 0, true), _jsxDEV(Sub, {
+            children: [descNow, " · tuntuu kuin ", fiNum(cur.apparent_temperature), " °C"]
+          }, void 0, true)]
+        }, void 0, true), _jsxDEV("div", {
+          className: "now-stats",
+          children: [_jsxDEV("div", {
+            className: "stat",
+            children: [_jsxDEV("span", {
+              className: "k",
+              children: "Sade nyt"
+            }, void 0, false), _jsxDEV("span", {
+              className: "v mono",
+              children: [fiNum(cur.precipitation), " mm/h"]
+            }, void 0, true)]
+          }, void 0, true), _jsxDEV("div", {
+            className: "stat",
+            children: [_jsxDEV("span", {
+              className: "k",
+              children: "Tuuli"
+            }, void 0, false), _jsxDEV("span", {
+              className: "v mono",
+              children: [_jsxDEV("span", {
+                className: "arrow",
+                style: {
+                  transform: `rotate(${(cur.wind_direction_10m ?? 0) + 180}deg)`
+                },
+                children: "↑"
+              }, void 0, false), " ", fiNum(cur.wind_speed_10m), " m/s (", compass(cur.wind_direction_10m), "), puuskissa ", fiNum(cur.wind_gusts_10m)]
+            }, void 0, true)]
+          }, void 0, true), _jsxDEV("div", {
+            className: "stat",
+            children: [_jsxDEV("span", {
+              className: "k",
+              children: "UV-indeksi"
+            }, void 0, false), _jsxDEV("span", {
+              className: "v mono",
+              style: {
+                color: uvColor(uvNow)
+              },
+              children: [fiNum(uvNow), " · ", uvText(uvNow)]
+            }, void 0, true)]
+          }, void 0, true), _jsxDEV("div", {
+            className: "stat",
+            children: [_jsxDEV("span", {
+              className: "k",
+              children: "Vrk sademäärä (ennuste tänään)"
+            }, void 0, false), _jsxDEV("span", {
+              className: "v mono",
+              children: [fiNum(d.precipitation_sum[todayIdx]), " mm"]
+            }, void 0, true)]
+          }, void 0, true), _jsxDEV("div", {
+            className: "stat",
+            children: [_jsxDEV("span", {
+              className: "k",
+              children: "Kosteus / paine"
+            }, void 0, false), _jsxDEV("span", {
+              className: "v mono",
+              children: [fiNum(cur.relative_humidity_2m, 0), " % · ", fiNum(cur.surface_pressure, 0), " hPa"]
+            }, void 0, true)]
+          }, void 0, true)]
+        }, void 0, true)]
+      }, void 0, true)]
+    }, void 0, true), _jsxDEV("div", {
+      className: "grid2",
+      children: [_jsxDEV(Card, {
+        children: [_jsxDEV(Eyebrow, {
+          children: "yr.no · MET Norja (sama piste)"
+        }, void 0, false), yrTemp ? _jsxDEV(_Fragment, {
+          children: [_jsxDEV(Big, {
+            children: [fiNum(yrTemp.air_temperature), " °C"]
+          }, void 0, true), _jsxDEV(Sub, {
+            children: ["tuuli ", fiNum(yrTemp.wind_speed), " m/s · sade seur. tunti ", fiNum(yrRain), " mm", typeof yrTemp.air_temperature === "number" && _jsxDEV(_Fragment, {
+              children: [" · ero Open-Meteoon ", fiNum(yrTemp.air_temperature - cur.temperature_2m), " °C"]
+            }, void 0, true)]
+          }, void 0, true)]
+        }, void 0, true) : _jsxDEV(Sub, {
+          children: "yr.no-rajapinta ei vastannut selaimesta – kokeile päivittää."
+        }, void 0, false)]
+      }, void 0, true), _jsxDEV(Card, {
+        children: [_jsxDEV(Eyebrow, {
+          children: "Ilmatieteen laitos · lähin sääasema"
+        }, void 0, false), city.country_code !== "FI" ? _jsxDEV(Sub, {
+          children: "FMI-havainnot vain Suomen paikkakunnille."
+        }, void 0, false) : fmi && fmi.t2m != null ? _jsxDEV(_Fragment, {
+          children: [_jsxDEV(Big, {
+            children: [fiNum(fmi.t2m), " °C"]
+          }, void 0, true), _jsxDEV(Sub, {
+            children: ["tuuli ", fiNum(fmi.ws), " m/s, puuskat ", fiNum(fmi.wg), " · sade 1 h ", fiNum(fmi.r1h), " mm · kosteus ", fiNum(fmi.rh, 0), " % · klo ", fmi.time ? fiDT(fmi.time) : "–"]
+          }, void 0, true)]
+        }, void 0, true) : _jsxDEV(Sub, {
+          children: "FMI:n havaintoa ei saatu haettua selaimesta (avoin data / WFS). Ennustetiedot yllä toimivat silti."
+        }, void 0, false)]
+      }, void 0, true)]
+    }, void 0, true), _jsxDEV(Card, {
+      children: [_jsxDEV(Eyebrow, {
+        children: "Seuraavat 48 tuntia · lämpötila ja sade"
+      }, void 0, false), _jsxDEV("div", {
+        className: "chartbox",
+        children: _jsxDEV(ResponsiveContainer, {
+          width: "100%",
+          height: 190,
+          children: _jsxDEV(ComposedChart, {
+            data: hours48,
+            margin: {
+              top: 6,
+              right: 4,
+              left: -18,
+              bottom: 0
+            },
+            children: [_jsxDEV(CartesianGrid, {
+              stroke: PALETTE.line,
+              strokeDasharray: "3 3"
+            }, void 0, false), _jsxDEV(XAxis, {
+              dataKey: "h",
+              tick: {
+                fill: PALETTE.muted,
+                fontSize: 10
+              },
+              interval: 7
+            }, void 0, false), _jsxDEV(YAxis, {
+              yAxisId: "t",
+              tick: {
+                fill: PALETTE.muted,
+                fontSize: 10
+              },
+              unit: "°"
+            }, void 0, false), _jsxDEV(YAxis, {
+              yAxisId: "p",
+              orientation: "right",
+              tick: {
+                fill: PALETTE.muted,
+                fontSize: 10
+              },
+              width: 30
+            }, void 0, false), _jsxDEV(Tooltip, {
+              contentStyle: tooltipStyle,
+              formatter: (v, n) => [fiNum(v) + (n === "Sade mm" ? " mm" : " °C"), n]
+            }, void 0, false), _jsxDEV(Bar, {
+              yAxisId: "p",
+              dataKey: "sade",
+              name: "Sade mm",
+              fill: PALETTE.ice,
+              opacity: 0.75
+            }, void 0, false), _jsxDEV(Line, {
+              yAxisId: "t",
+              dataKey: "t",
+              name: "Lämpötila",
+              stroke: PALETTE.amber,
+              dot: false,
+              strokeWidth: 2
+            }, void 0, false)]
+          }, void 0, true)
+        }, void 0, false)
+      }, void 0, false)]
+    }, void 0, true), _jsxDEV(Card, {
+      accent: PALETTE.ice,
+      children: [_jsxDEV(Eyebrow, {
+        children: "Ennuste 15 vrk · lähde Open-Meteo (ECMWF ym. mallit)"
+      }, void 0, false), _jsxDEV("div", {
+        className: "dayscroll",
+        role: "list",
+        children: days15.map((x, i) => {
+          const [dsc, em] = wmo(x.code);
+          return _jsxDEV("div", {
+            className: "daycard",
+            role: "listitem",
+            title: dsc,
+            children: [_jsxDEV("div", {
+              className: "dc-day",
+              children: x.day
+            }, void 0, false), _jsxDEV("div", {
+              className: "dc-emoji",
+              "aria-label": dsc,
+              children: em
+            }, void 0, false), _jsxDEV("div", {
+              className: "dc-temp mono",
+              children: [_jsxDEV("b", {
+                children: [fiNum(x.tmax, 0), "°"]
+              }, void 0, true), " / ", fiNum(x.tmin, 0), "°"]
+            }, void 0, true), _jsxDEV("div", {
+              className: "dc-row mono",
+              children: ["💧 ", fiNum(x.sade), " mm", x.sadeTn != null ? ` · ${fiNum(x.sadeTn, 0)} %` : ""]
+            }, void 0, true), _jsxDEV("div", {
+              className: "dc-row mono",
+              children: ["💨 ", fiNum(x.tuuli, 0), "–", fiNum(x.puuska, 0), " m/s"]
+            }, void 0, true), _jsxDEV("div", {
+              className: "dc-row mono",
+              style: {
+                color: uvColor(x.uv)
+              },
+              children: ["UV ", fiNum(x.uv)]
+            }, void 0, true)]
+          }, i, true);
+        })
+      }, void 0, false), _jsxDEV("div", {
+        className: "chartbox",
+        style: {
+          marginTop: 10
+        },
+        children: _jsxDEV(ResponsiveContainer, {
+          width: "100%",
+          height: 210,
+          children: _jsxDEV(ComposedChart, {
+            data: days15,
+            margin: {
+              top: 6,
+              right: 4,
+              left: -18,
+              bottom: 0
+            },
+            children: [_jsxDEV(CartesianGrid, {
+              stroke: PALETTE.line,
+              strokeDasharray: "3 3"
+            }, void 0, false), _jsxDEV(XAxis, {
+              dataKey: "day",
+              tick: {
+                fill: PALETTE.muted,
+                fontSize: 10
+              },
+              interval: 1
+            }, void 0, false), _jsxDEV(YAxis, {
+              yAxisId: "t",
+              tick: {
+                fill: PALETTE.muted,
+                fontSize: 10
+              },
+              unit: "°"
+            }, void 0, false), _jsxDEV(YAxis, {
+              yAxisId: "p",
+              orientation: "right",
+              tick: {
+                fill: PALETTE.muted,
+                fontSize: 10
+              },
+              width: 30
+            }, void 0, false), _jsxDEV(Tooltip, {
+              contentStyle: tooltipStyle
+            }, void 0, false), _jsxDEV(Legend, {
+              wrapperStyle: {
+                fontSize: 11,
+                color: PALETTE.muted
+              }
+            }, void 0, false), _jsxDEV(Bar, {
+              yAxisId: "p",
+              dataKey: "sade",
+              name: "Sade (mm)",
+              fill: PALETTE.ice,
+              opacity: 0.7
+            }, void 0, false), _jsxDEV(Line, {
+              yAxisId: "t",
+              dataKey: "tmax",
+              name: "Ylin (°C)",
+              stroke: PALETTE.amber,
+              dot: false,
+              strokeWidth: 2
+            }, void 0, false), _jsxDEV(Line, {
+              yAxisId: "t",
+              dataKey: "tmin",
+              name: "Alin (°C)",
+              stroke: PALETTE.violet,
+              dot: false,
+              strokeWidth: 2
+            }, void 0, false)]
+          }, void 0, true)
+        }, void 0, false)
+      }, void 0, false), _jsxDEV("div", {
+        className: "chartbox",
+        children: _jsxDEV(ResponsiveContainer, {
+          width: "100%",
+          height: 140,
+          children: _jsxDEV(ComposedChart, {
+            data: days15,
+            margin: {
+              top: 6,
+              right: 4,
+              left: -18,
+              bottom: 0
+            },
+            children: [_jsxDEV(CartesianGrid, {
+              stroke: PALETTE.line,
+              strokeDasharray: "3 3"
+            }, void 0, false), _jsxDEV(XAxis, {
+              dataKey: "day",
+              tick: {
+                fill: PALETTE.muted,
+                fontSize: 10
+              },
+              interval: 2
+            }, void 0, false), _jsxDEV(YAxis, {
+              tick: {
+                fill: PALETTE.muted,
+                fontSize: 10
+              },
+              unit: " m/s",
+              width: 48
+            }, void 0, false), _jsxDEV(Tooltip, {
+              contentStyle: tooltipStyle
+            }, void 0, false), _jsxDEV(Legend, {
+              wrapperStyle: {
+                fontSize: 11,
+                color: PALETTE.muted
+              }
+            }, void 0, false), _jsxDEV(Line, {
+              dataKey: "tuuli",
+              name: "Tuuli max",
+              stroke: PALETTE.green,
+              dot: false,
+              strokeWidth: 2
+            }, void 0, false), _jsxDEV(Line, {
+              dataKey: "puuska",
+              name: "Puuskat",
+              stroke: PALETTE.green,
+              strokeDasharray: "4 3",
+              dot: false
+            }, void 0, false)]
+          }, void 0, true)
+        }, void 0, false)
+      }, void 0, false), _jsxDEV(Sub, {
+        style: {
+          marginTop: 4
+        },
+        children: "Huom.: 10–15 vrk päähän ulottuva ennuste on suuntaa-antava – epävarmuus kasvaa nopeasti viikon jälkeen."
+      }, void 0, false)]
+    }, void 0, true), _jsxDEV("div", {
+      className: "grid2",
+      children: [_jsxDEV(Card, {
+        accent: PALETTE.violet,
+        children: [_jsxDEV(Eyebrow, {
+          children: "Rouskukeli™ · sienisääindeksi"
+        }, void 0, false), rk ? _jsxDEV(_Fragment, {
+          children: [_jsxDEV(Big, {
+            children: [rk.label[1], " ", rk.score, "/100"]
+          }, void 0, true), _jsxDEV("div", {
+            className: "meter",
+            children: [_jsxDEV("div", {
+              className: "meter-fill",
+              style: {
+                width: `${rk.score}%`
+              }
+            }, void 0, false), _jsxDEV("div", {
+              className: "meter-dot",
+              style: {
+                left: `calc(${rk.score}% - 10px)`
+              },
+              children: "🍄"
+            }, void 0, false)]
+          }, void 0, true), _jsxDEV(Sub, {
+            children: [rk.label[0], " Sade 7 vrk: ", fiNum(rain7), " mm · keskilämpö ", fiNum(tAvg7), " °C. (Ei Ilmatieteen laitoksen virallinen tuote 😄)"]
+          }, void 0, true)]
+        }, void 0, true) : _jsxDEV(Sub, {
+          children: "Ei riittävästi historiadataa."
+        }, void 0, false)]
+      }, void 0, true), _jsxDEV(Card, {
+        children: [_jsxDEV(Eyebrow, {
+          children: "Aurinko ja kuu"
+        }, void 0, false), _jsxDEV(Big, {
+          children: [moonEmoji, " ", moonName]
+        }, void 0, true), _jsxDEV(Sub, {
+          children: ["Aurinko ↑ ", sunrise ? sunrise.slice(11, 16) : "–", " · ↓ ", sunset ? sunset.slice(11, 16) : "–", dayLen ? ` · päivän pituus ${dayLen}` : ""]
+        }, void 0, true)]
+      }, void 0, true)]
+    }, void 0, true), _jsxDEV(Card, {
+      children: [_jsxDEV(Eyebrow, {
+        children: "Ilmanlaatu ja siitepöly · Open-Meteo / CAMS"
+      }, void 0, false), aq && aq.current ? _jsxDEV("div", {
+        className: "aq-grid mono",
+        children: [_jsxDEV("div", {
+          className: "stat",
+          children: [_jsxDEV("span", {
+            className: "k",
+            children: "Ilmanlaatuindeksi (EU)"
+          }, void 0, false), _jsxDEV("span", {
+            className: "v",
+            children: [fiNum(aq.current.european_aqi, 0), " · ", aqiText(aq.current.european_aqi)]
+          }, void 0, true)]
+        }, void 0, true), _jsxDEV("div", {
+          className: "stat",
+          children: [_jsxDEV("span", {
+            className: "k",
+            children: "PM2,5 / PM10"
+          }, void 0, false), _jsxDEV("span", {
+            className: "v",
+            children: [fiNum(aq.current.pm2_5), " / ", fiNum(aq.current.pm10), " µg/m³"]
+          }, void 0, true)]
+        }, void 0, true), _jsxDEV("div", {
+          className: "stat",
+          children: [_jsxDEV("span", {
+            className: "k",
+            children: "Otsoni"
+          }, void 0, false), _jsxDEV("span", {
+            className: "v",
+            children: [fiNum(aq.current.ozone, 0), " µg/m³"]
+          }, void 0, true)]
+        }, void 0, true), _jsxDEV("div", {
+          className: "stat",
+          children: [_jsxDEV("span", {
+            className: "k",
+            children: "Heinä / koivu"
+          }, void 0, false), _jsxDEV("span", {
+            className: "v",
+            children: [fiNum(aq.current.grass_pollen, 0), " / ", fiNum(aq.current.birch_pollen, 0), " kpl/m³"]
+          }, void 0, true)]
+        }, void 0, true)]
+      }, void 0, true) : _jsxDEV(Sub, {
+        children: "Ilmanlaatutietoa ei saatu tälle paikalle."
+      }, void 0, false)]
+    }, void 0, true)]
+  }, void 0, true);
+}
+const RADAR_LAYERS = {
+  "Radar:suomi_dbz_eureffin": "Tutkakomposiitti (dBZ)",
+  "Radar:suomi_rr_eureffin": "Sateen intensiteetti (mm/h)",
+  "Radar:suomi_rr1h_eureffin": "Sademäärä 1 h",
+  "Radar:suomi_rr24h_eureffin": "Sademäärä 24 h"
+};
+function RadarTab({
+  lightning
+}) {
+  const [layer, setLayer] = useState("Radar:suomi_dbz_eureffin");
+  const [ts, setTs] = useState(Date.now());
+  const [imgFail, setImgFail] = useState(false);
+  useEffect(() => {
+    const id = setInterval(() => setTs(Date.now()), 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+  const url = `https://openwms.fmi.fi/geoserver/wms?service=WMS&version=1.1.0&request=GetMap` + `&layers=${encodeURIComponent(layer)}&styles=&bbox=-118331.366,6335621.167,875567.732,7907751.537` + `&width=560&height=886&srs=EPSG:3067&format=image/png&_=${ts}`;
+  return _jsxDEV("div", {
+    className: "stack",
+    children: [_jsxDEV(Card, {
+      accent: PALETTE.ice,
+      children: [_jsxDEV(Eyebrow, {
+        children: "Sadetutka · Ilmatieteen laitoksen avoin WMS · päivittyy 5 min välein"
+      }, void 0, false), _jsxDEV("div", {
+        className: "radar-controls",
+        children: [_jsxDEV("select", {
+          className: "select",
+          value: layer,
+          onChange: e => {
+            setLayer(e.target.value);
+            setImgFail(false);
+          },
+          children: Object.entries(RADAR_LAYERS).map(([k, v]) => _jsxDEV("option", {
+            value: k,
+            children: v
+          }, k, false))
+        }, void 0, false), _jsxDEV("button", {
+          className: "btn",
+          onClick: () => {
+            setTs(Date.now());
+            setImgFail(false);
+          },
+          children: "Päivitä kuva"
+        }, void 0, false)]
+      }, void 0, true), !imgFail ? _jsxDEV("div", {
+        className: "radar-wrap",
+        children: _jsxDEV("img", {
+          src: url,
+          alt: `FMI-tutkakuva: ${RADAR_LAYERS[layer]}`,
+          className: "radar-img",
+          onError: () => setImgFail(true)
+        }, ts + layer, false)
+      }, void 0, false) : _jsxDEV(ErrBox, {
+        children: "Tutkakuvaa ei voitu ladata tässä ympäristössä. Avaa tutka suoraan alta löytyvistä linkeistä."
+      }, void 0, false), _jsxDEV(Sub, {
+        children: ["Kuva on FMI:n tutkakomposiitti ilman taustakarttaa (Suomi ja lähialueet, ETRS-TM35FIN). Klo-leima: ", fiDT(ts), "."]
+      }, void 0, true)]
+    }, void 0, true), _jsxDEV(Card, {
+      accent: PALETTE.amber,
+      children: [_jsxDEV(Eyebrow, {
+        children: "Ukkostutka · salamahavainnot"
+      }, void 0, false), lightning?.status === "ok" ? _jsxDEV(_Fragment, {
+        children: [_jsxDEV(Big, {
+          children: ["⚡ ", lightning.count >= lightning.cap ? `yli ${lightning.cap}` : lightning.count, " salamaa"]
+        }, void 0, true), _jsxDEV(Sub, {
+          children: "Maasalamahavaintoja Suomen alueella viimeisen tunnin aikana (FMI:n avoin data)."
+        }, void 0, false)]
+      }, void 0, true) : lightning?.status === "zero" ? _jsxDEV(_Fragment, {
+        children: [_jsxDEV(Big, {
+          children: "⚡ 0 salamaa"
+        }, void 0, false), _jsxDEV(Sub, {
+          children: "Ei salamahavaintoja Suomen alueella viimeisen tunnin aikana."
+        }, void 0, false)]
+      }, void 0, true) : _jsxDEV(Sub, {
+        children: "Salamadataa ei saatu haettua selaimesta juuri nyt – katso reaaliaikainen tilanne linkeistä."
+      }, void 0, false)]
+    }, void 0, true), _jsxDEV(Card, {
+      children: [_jsxDEV(Eyebrow, {
+        children: "Tutkat ja kartat muualla"
+      }, void 0, false), _jsxDEV("div", {
+        className: "linkrow",
+        children: [_jsxDEV(LinkChip, {
+          href: "https://www.ilmatieteenlaitos.fi/sade-ja-pilvialueet",
+          children: "FMI: sade-, pilvi- ja salamakartta"
+        }, void 0, false), _jsxDEV(LinkChip, {
+          href: "https://www.sataako.fi",
+          children: "Sataako.fi – nopea tutkavilkaisu"
+        }, void 0, false), _jsxDEV(LinkChip, {
+          href: "https://www.yr.no/en/map/radar",
+          children: "yr.no – Pohjoismaiden tutkakartta"
+        }, void 0, false), _jsxDEV(LinkChip, {
+          href: "https://www.windy.com/-Weather-radar-radar",
+          children: "Windy – tutka ja mallit"
+        }, void 0, false), _jsxDEV(LinkChip, {
+          href: "https://map.blitzortung.org/#5/64/26",
+          children: "Blitzortung – reaaliaikaiset salamat"
+        }, void 0, false)]
+      }, void 0, true)]
+    }, void 0, true)]
+  }, void 0, true);
+}
+function SpaceTab({
+  space
+}) {
+  if (!space) return _jsxDEV(Card, {
+    children: _jsxDEV(Spinner, {
+      text: "Haetaan avaruussäätä (NOAA SWPC)…"
+    }, void 0, false)
+  }, void 0, false);
+  const {
+    kpSeries,
+    scales,
+    wind,
+    mag,
+    err
+  } = space;
+  const kpNow = kpSeries?.length ? kpSeries[kpSeries.length - 1].kp : null;
+  const cur = scales?.["0"];
+  const bz = mag?.Bz != null ? Number(mag.Bz) : null;
+  return _jsxDEV("div", {
+    className: "stack",
+    children: [_jsxDEV("div", {
+      className: "grid2",
+      children: [_jsxDEV(Card, {
+        accent: kpColor(kpNow),
+        children: [_jsxDEV(Eyebrow, {
+          children: "Kp-indeksi nyt · NOAA SWPC"
+        }, void 0, false), _jsxDEV(Big, {
+          color: kpColor(kpNow),
+          children: kpNow != null ? fiNum(kpNow) : "–"
+        }, void 0, false), _jsxDEV(Sub, {
+          children: ["Geomagneettinen aktiivisuus: ", cur?.G?.Scale != null ? G_FI[Number(cur.G.Scale)] || "–" : "–"]
+        }, void 0, true)]
+      }, void 0, true), _jsxDEV(Card, {
+        accent: PALETTE.green,
+        children: [_jsxDEV(Eyebrow, {
+          children: "Revontuliarvio Suomeen"
+        }, void 0, false), _jsxDEV(Big, {
+          children: "🌌"
+        }, void 0, false), _jsxDEV(Sub, {
+          children: [auroraEstimate(kpNow), " Heinäkuussa yöt ovat tosin niin valoisia, että havainnot onnistuvat käytännössä vasta elokuun lopulta alkaen."]
+        }, void 0, true)]
+      }, void 0, true)]
+    }, void 0, true), _jsxDEV("div", {
+      className: "grid2",
+      children: [_jsxDEV(Card, {
+        children: [_jsxDEV(Eyebrow, {
+          children: "Aurinkotuuli"
+        }, void 0, false), _jsxDEV(Big, {
+          className: "mono",
+          children: wind?.WindSpeed ? `${fiNum(wind.WindSpeed, 0)} km/s` : "–"
+        }, void 0, false), _jsxDEV(Sub, {
+          children: "Mitattu L1-pisteessä (DSCOVR/ACE)."
+        }, void 0, false)]
+      }, void 0, true), _jsxDEV(Card, {
+        children: [_jsxDEV(Eyebrow, {
+          children: "Magneettikenttä Bz"
+        }, void 0, false), _jsxDEV(Big, {
+          color: bz != null && bz < -5 ? PALETTE.amber : undefined,
+          className: "mono",
+          children: bz != null ? `${fiNum(bz)} nT` : "–"
+        }, void 0, false), _jsxDEV(Sub, {
+          children: bz != null && bz < 0 ? "Etelään kääntynyt Bz kytkee aurinkotuulen magnetosfääriin – suotuisa revontulille." : "Pohjoinen Bz – heikko kytkentä, rauhallista."
+        }, void 0, false)]
+      }, void 0, true)]
+    }, void 0, true), cur && _jsxDEV(Card, {
+      children: [_jsxDEV(Eyebrow, {
+        children: "NOAA-asteikot nyt (R · S · G)"
+      }, void 0, false), _jsxDEV("div", {
+        className: "scalechips",
+        children: [_jsxDEV("span", {
+          className: "chip",
+          children: ["R", cur.R?.Scale ?? "0", " · radiohäiriöt"]
+        }, void 0, true), _jsxDEV("span", {
+          className: "chip",
+          children: ["S", cur.S?.Scale ?? "0", " · säteilymyrsky"]
+        }, void 0, true), _jsxDEV("span", {
+          className: "chip",
+          style: {
+            borderColor: kpColor(kpNow)
+          },
+          children: ["G", cur.G?.Scale ?? "0", " · geomagn. myrsky"]
+        }, void 0, true)]
+      }, void 0, true)]
+    }, void 0, true), scales && (scales["1"] || scales["2"] || scales["3"]) && _jsxDEV(Card, {
+      accent: PALETTE.violet,
+      children: [_jsxDEV(Eyebrow, {
+        children: "Avaruussääennuste · seuraavat 3 vrk"
+      }, void 0, false), _jsxDEV("div", {
+        className: "fc3",
+        children: ["1", "2", "3"].map(k => {
+          const e = scales[k];
+          if (!e) return null;
+          return _jsxDEV("div", {
+            className: "fc3-item",
+            children: [_jsxDEV("div", {
+              className: "fc3-day",
+              children: e.DateStamp || `+${k} vrk`
+            }, void 0, false), _jsxDEV("div", {
+              className: "mono",
+              children: ["G", e.G?.Scale ?? "0"]
+            }, void 0, true), _jsxDEV(Sub, {
+              children: ["R1–R2: ", e.R?.MinorProb ?? "–", " % · S1: ", e.S?.Scale != null ? `S${e.S.Scale}` : e.S?.MinorProb != null ? `${e.S.MinorProb} %` : "–"]
+            }, void 0, true)]
+          }, k, true);
+        })
+      }, void 0, false)]
+    }, void 0, true), kpSeries?.length > 0 && _jsxDEV(Card, {
+      children: [_jsxDEV(Eyebrow, {
+        children: "Kp-indeksi · viimeiset ~3 vrk (3 h jaksot)"
+      }, void 0, false), _jsxDEV("div", {
+        className: "chartbox",
+        children: _jsxDEV(ResponsiveContainer, {
+          width: "100%",
+          height: 170,
+          children: _jsxDEV(BarChart, {
+            data: kpSeries,
+            margin: {
+              top: 6,
+              right: 4,
+              left: -22,
+              bottom: 0
+            },
+            children: [_jsxDEV(CartesianGrid, {
+              stroke: PALETTE.line,
+              strokeDasharray: "3 3"
+            }, void 0, false), _jsxDEV(XAxis, {
+              dataKey: "t",
+              tick: {
+                fill: PALETTE.muted,
+                fontSize: 10
+              },
+              interval: 5
+            }, void 0, false), _jsxDEV(YAxis, {
+              domain: [0, 9],
+              tick: {
+                fill: PALETTE.muted,
+                fontSize: 10
+              }
+            }, void 0, false), _jsxDEV(Tooltip, {
+              contentStyle: tooltipStyle
+            }, void 0, false), _jsxDEV(Bar, {
+              dataKey: "kp",
+              name: "Kp",
+              children: kpSeries.map((e, i) => _jsxDEV(Cell, {
+                fill: kpColor(e.kp)
+              }, i, false))
+            }, void 0, false)]
+          }, void 0, true)
+        }, void 0, false)
+      }, void 0, false)]
+    }, void 0, true), err && _jsxDEV(ErrBox, {
+      children: ["Osa NOAA-tiedoista jäi saamatta: ", String(err)]
+    }, void 0, true), _jsxDEV(Card, {
+      children: [_jsxDEV(Eyebrow, {
+        children: "Lisää avaruussäätä"
+      }, void 0, false), _jsxDEV("div", {
+        className: "linkrow",
+        children: [_jsxDEV(LinkChip, {
+          href: "https://aurorasnow.fmi.fi/public_service/",
+          children: "FMI: revontulet ja avaruussää"
+        }, void 0, false), _jsxDEV(LinkChip, {
+          href: "https://www.swpc.noaa.gov/",
+          children: "NOAA Space Weather Prediction Center"
+        }, void 0, false)]
+      }, void 0, true)]
+    }, void 0, true)]
+  }, void 0, true);
+}
+function QuakeTab({
+  quakes
+}) {
+  if (!quakes) return _jsxDEV(Card, {
+    children: _jsxDEV(Spinner, {
+      text: "Haetaan maanjäristykset (USGS)…"
+    }, void 0, false)
+  }, void 0, false);
+  if (quakes.err) return _jsxDEV(Card, {
+    children: _jsxDEV(ErrBox, {
+      children: ["USGS-haku epäonnistui: ", String(quakes.err)]
+    }, void 0, true)
+  }, void 0, false);
+  const list = quakes.items || [];
+  const magColor = m => m >= 8 ? PALETTE.red : m >= 7 ? "#FF9950" : PALETTE.amber;
+  return _jsxDEV("div", {
+    className: "stack",
+    children: [_jsxDEV(Card, {
+      accent: PALETTE.amber,
+      children: [_jsxDEV(Eyebrow, {
+        children: "Maanjäristykset ≥ 6,5 M · viimeiset 30 vrk · USGS"
+      }, void 0, false), list.length === 0 ? _jsxDEV(Sub, {
+        children: "Ei yli 6,5 magnitudin järistyksiä viimeisen 30 vuorokauden aikana."
+      }, void 0, false) : _jsxDEV("div", {
+        className: "quakelist",
+        children: list.map(q => _jsxDEV("a", {
+          className: "quakerow",
+          href: q.url,
+          target: "_blank",
+          rel: "noopener noreferrer",
+          children: [_jsxDEV("span", {
+            className: "magbadge mono",
+            style: {
+              backgroundColor: magColor(q.mag)
+            },
+            children: fiNum(q.mag)
+          }, void 0, false), _jsxDEV("span", {
+            className: "qplace",
+            children: [q.place || "–", q.tsunami ? " 🌊" : "", _jsxDEV("span", {
+              className: "qmeta",
+              children: [fiDT(q.time), " · syvyys ", fiNum(q.depth, 0), " km", q.tsunami ? " · tsunamiviesti annettu" : ""]
+            }, void 0, true)]
+          }, void 0, true)]
+        }, q.id, true))
+      }, void 0, false)]
+    }, void 0, true), _jsxDEV(Card, {
+      children: [_jsxDEV(Eyebrow, {
+        children: "Seismologiaa muualla"
+      }, void 0, false), _jsxDEV("div", {
+        className: "linkrow",
+        children: [_jsxDEV(LinkChip, {
+          href: "https://earthquake.usgs.gov/earthquakes/map/",
+          children: "USGS: reaaliaikainen kartta"
+        }, void 0, false), _jsxDEV(LinkChip, {
+          href: "https://www.emsc-csem.org/",
+          children: "EMSC – Euroopan seismologinen keskus"
+        }, void 0, false), _jsxDEV(LinkChip, {
+          href: "https://www.helsinki.fi/fi/seismologian-instituutti",
+          children: "Seismologian instituutti (HY) – Suomen järistykset"
+        }, void 0, false)]
+      }, void 0, true)]
+    }, void 0, true)]
+  }, void 0, true);
+}
+function AlertsTab({
+  alerts
+}) {
+  if (!alerts) return _jsxDEV(Card, {
+    children: _jsxDEV(Spinner, {
+      text: "Haetaan varoitukset…"
+    }, void 0, false)
+  }, void 0, false);
+  return _jsxDEV("div", {
+    className: "stack",
+    children: [_jsxDEV(Card, {
+      accent: alerts.items?.length ? PALETTE.red : PALETTE.green,
+      children: [_jsxDEV(Eyebrow, {
+        children: "Säävaroitukset · Suomi"
+      }, void 0, false), alerts.status === "ok" && alerts.items.length > 0 && _jsxDEV("div", {
+        className: "quakelist",
+        children: alerts.items.map((a, i) => _jsxDEV("div", {
+          className: "alertrow",
+          children: [_jsxDEV("div", {
+            className: "alerttitle",
+            children: ["⚠️ ", a.title]
+          }, void 0, true), a.desc && _jsxDEV(Sub, {
+            children: a.desc
+          }, void 0, false)]
+        }, i, true))
+      }, void 0, false), alerts.status === "ok" && alerts.items.length === 0 && _jsxDEV(_Fragment, {
+        children: [_jsxDEV(Big, {
+          children: "✅"
+        }, void 0, false), _jsxDEV(Sub, {
+          children: "Varoitussyöte luettu – ei voimassa olevia varoituksia."
+        }, void 0, false)]
+      }, void 0, true), alerts.status === "unavailable" && _jsxDEV(Sub, {
+        children: "Ilmatieteen laitoksen varoitussyötettä (CAP/RSS) ei voitu lukea suoraan selaimesta. Tarkista voimassa olevat varoitukset alla olevista virallisista lähteistä – sovellus yrittää lukea syötteen uudelleen Päivitä-painikkeella."
+      }, void 0, false)]
+    }, void 0, true), _jsxDEV(Card, {
+      children: [_jsxDEV(Eyebrow, {
+        children: "Viralliset varoituslähteet"
+      }, void 0, false), _jsxDEV("div", {
+        className: "linkrow",
+        children: [_jsxDEV(LinkChip, {
+          href: "https://www.ilmatieteenlaitos.fi/varoitukset",
+          children: "Ilmatieteen laitos: varoitukset"
+        }, void 0, false), _jsxDEV(LinkChip, {
+          href: "https://meteoalarm.org/en/live/region/FI",
+          children: "MeteoAlarm – Suomi"
+        }, void 0, false), _jsxDEV(LinkChip, {
+          href: "https://www.112.fi",
+          children: "112 Suomi -sovellus (vaaratiedotteet)"
+        }, void 0, false)]
+      }, void 0, true)]
+    }, void 0, true)]
+  }, void 0, true);
+}
+const DEFAULT_CITY = {
+  name: "Helsinki",
+  latitude: 60.1699,
+  longitude: 24.9384,
+  country_code: "FI",
+  admin1: "Uusimaa"
+};
+const QUICK = [DEFAULT_CITY, {
+  name: "Tampere",
+  latitude: 61.4981,
+  longitude: 23.7608,
+  country_code: "FI",
+  admin1: "Pirkanmaa"
+}, {
+  name: "Oulu",
+  latitude: 65.0121,
+  longitude: 25.4651,
+  country_code: "FI",
+  admin1: "Pohjois-Pohjanmaa"
+}, {
+  name: "Rovaniemi",
+  latitude: 66.5039,
+  longitude: 25.7294,
+  country_code: "FI",
+  admin1: "Lappi"
+}, {
+  name: "Tukholma",
+  latitude: 59.3293,
+  longitude: 18.0686,
+  country_code: "SE",
+  admin1: ""
+}, {
+  name: "Oslo",
+  latitude: 59.9139,
+  longitude: 10.7522,
+  country_code: "NO",
+  admin1: ""
+}];
+function AiKimmoSaa() {
+  const [city, setCity] = useState(DEFAULT_CITY);
+  const [tab, setTab] = useState("saa");
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef(null);
+  const [om, setOm] = useState(null);
+  const [yr, setYr] = useState(null);
+  const [fmi, setFmi] = useState(null);
+  const [aq, setAq] = useState(null);
+  const [wxLoading, setWxLoading] = useState(true);
+  const [wxErr, setWxErr] = useState(null);
+  const [quakes, setQuakes] = useState(null);
+  const [space, setSpace] = useState(null);
+  const [alerts, setAlerts] = useState(null);
+  const [lightning, setLightning] = useState(null);
+  const [updated, setUpdated] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!query || query.length < 2) {
+      setResults([]);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        setSearching(true);
+        const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=8&language=fi&format=json`);
+        const j = await r.json();
+        setResults(j.results || []);
+      } catch {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 350);
+    return () => debounceRef.current && clearTimeout(debounceRef.current);
+  }, [query]);
+  const fetchWeather = useCallback(async c => {
+    setWxLoading(true);
+    setWxErr(null);
+    try {
+      const base = `latitude=${c.latitude}&longitude=${c.longitude}&timezone=auto`;
+      const omUrl = `https://api.open-meteo.com/v1/forecast?${base}&wind_speed_unit=ms&forecast_days=16&past_days=7` + `&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,rain,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,is_day` + `&hourly=temperature_2m,precipitation,wind_speed_10m,uv_index,weather_code` + `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max,sunrise,sunset`;
+      const r = await fetch(omUrl, {
+        cache: "no-store"
+      });
+      if (!r.ok) throw new Error(`Open-Meteo HTTP ${r.status}`);
+      const j = await r.json();
+      setOm(j);
+      fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${c.latitude}&lon=${c.longitude}`, {
+        cache: "no-store"
+      }).then(x => x.ok ? x.json() : null).then(setYr).catch(() => setYr(null));
+      fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${base}&current=european_aqi,pm2_5,pm10,ozone,birch_pollen,grass_pollen`, {
+        cache: "no-store"
+      }).then(x => x.ok ? x.json() : null).then(setAq).catch(() => setAq(null));
+      if (c.country_code === "FI") {
+        const st = new Date(Date.now() - 3600e3).toISOString().split(".")[0] + "Z";
+        fetch(`https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0&request=getFeature&storedquery_id=fmi::observations::weather::simple&place=${encodeURIComponent(c.name)}&parameters=t2m,ws_10min,wg_10min,rh,r_1h&starttime=${st}`, {
+          cache: "no-store"
+        }).then(x => x.text()).then(txt => {
+          const doc = new DOMParser().parseFromString(txt, "text/xml");
+          const els = doc.getElementsByTagNameNS("*", "BsWfsElement");
+          const latest = {};
+          for (const el of els) {
+            const name = el.getElementsByTagNameNS("*", "ParameterName")[0]?.textContent;
+            const val = parseFloat(el.getElementsByTagNameNS("*", "ParameterValue")[0]?.textContent);
+            const time = el.getElementsByTagNameNS("*", "Time")[0]?.textContent;
+            if (name && !Number.isNaN(val)) latest[name] = {
+              val,
+              time
+            };
+          }
+          if (latest.t2m) {
+            setFmi({
+              t2m: latest.t2m.val,
+              ws: latest.ws_10min?.val,
+              wg: latest.wg_10min?.val,
+              rh: latest.rh?.val,
+              r1h: latest.r_1h?.val,
+              time: latest.t2m.time
+            });
+          } else setFmi(null);
+        }).catch(() => setFmi(null));
+      }
+    } catch (e) {
+      setWxErr(e.message || e);
+      setOm(null);
+    } finally {
+      setWxLoading(false);
+      setUpdated(new Date());
+    }
+  }, []);
+  const fetchGlobal = useCallback(async () => {
+    try {
+      const st = new Date(Date.now() - 30 * 86400e3).toISOString().slice(0, 10);
+      const r = await fetch(`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&minmagnitude=6.5&orderby=time&starttime=${st}`, {
+        cache: "no-store"
+      });
+      const j = await r.json();
+      setQuakes({
+        items: (j.features || []).map(f => ({
+          id: f.id,
+          mag: f.properties.mag,
+          place: f.properties.place,
+          time: f.properties.time,
+          tsunami: f.properties.tsunami === 1,
+          url: f.properties.url,
+          depth: f.geometry?.coordinates?.[2]
+        }))
+      });
+    } catch (e) {
+      setQuakes({
+        err: e.message || e,
+        items: []
+      });
+    }
+    try {
+      const [kpR, scR, swR, mgR] = await Promise.allSettled([fetch("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json", {
+        cache: "no-store"
+      }).then(x => x.json()), fetch("https://services.swpc.noaa.gov/products/noaa-scales.json", {
+        cache: "no-store"
+      }).then(x => x.json()), fetch("https://services.swpc.noaa.gov/products/summary/solar-wind-speed.json", {
+        cache: "no-store"
+      }).then(x => x.json()), fetch("https://services.swpc.noaa.gov/products/summary/solar-wind-mag-field.json", {
+        cache: "no-store"
+      }).then(x => x.json())]);
+      let kpSeries = [];
+      if (kpR.status === "fulfilled" && Array.isArray(kpR.value)) {
+        kpSeries = kpR.value.slice(1).map(row => ({
+          t: new Date(row[0].replace(" ", "T") + "Z").toLocaleString("fi-FI", {
+            day: "numeric",
+            month: "numeric",
+            hour: "2-digit"
+          }),
+          kp: parseFloat(row[1])
+        })).filter(x => !Number.isNaN(x.kp)).slice(-24);
+      }
+      setSpace({
+        kpSeries,
+        scales: scR.status === "fulfilled" ? scR.value : null,
+        wind: swR.status === "fulfilled" ? swR.value : null,
+        mag: mgR.status === "fulfilled" ? mgR.value : null,
+        err: kpR.status === "rejected" && scR.status === "rejected" ? "NOAA-rajapinnat eivät vastanneet" : null
+      });
+    } catch (e) {
+      setSpace({
+        err: e.message || e
+      });
+    }
+    const feedUrls = ["https://alerts.fmi.fi/cap/feed/rss_fi-FI.rss", "https://alerts.fmi.fi/cap/feed/atom_fi-FI.xml", "https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-finland"];
+    let got = false;
+    for (const u of feedUrls) {
+      try {
+        const r = await fetch(u, {
+          cache: "no-store"
+        });
+        if (!r.ok) continue;
+        const txt = await r.text();
+        const doc = new DOMParser().parseFromString(txt, "text/xml");
+        let nodes = Array.from(doc.getElementsByTagName("item"));
+        if (nodes.length === 0) nodes = Array.from(doc.getElementsByTagNameNS("*", "entry"));
+        const seen = new Set();
+        const items = [];
+        for (const n of nodes) {
+          const title = (n.getElementsByTagName("title")[0] || n.getElementsByTagNameNS("*", "title")[0])?.textContent?.trim();
+          const desc = (n.getElementsByTagName("description")[0] || n.getElementsByTagNameNS("*", "summary")[0])?.textContent?.trim();
+          if (title && !seen.has(title)) {
+            seen.add(title);
+            items.push({
+              title,
+              desc: desc ? desc.replace(/<[^>]+>/g, "").slice(0, 220) : ""
+            });
+          }
+          if (items.length >= 12) break;
+        }
+        setAlerts({
+          status: "ok",
+          items
+        });
+        got = true;
+        break;
+      } catch {}
+    }
+    if (!got) setAlerts({
+      status: "unavailable",
+      items: []
+    });
+    try {
+      const st = new Date(Date.now() - 3600e3).toISOString().split(".")[0] + "Z";
+      const cap = 2000;
+      const r = await fetch(`https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0&request=getFeature&storedquery_id=fmi::observations::lightning::simple&parameters=peak_current&starttime=${st}&bbox=19,59,32,71&count=${cap}`, {
+        cache: "no-store"
+      });
+      const txt = await r.text();
+      const doc = new DOMParser().parseFromString(txt, "text/xml");
+      const n = doc.getElementsByTagNameNS("*", "BsWfsElement").length;
+      setLightning({
+        status: n > 0 ? "ok" : "zero",
+        count: n,
+        cap
+      });
+    } catch {
+      setLightning({
+        status: "unavailable"
+      });
+    }
+    setUpdated(new Date());
+  }, []);
+  useEffect(() => {
+    fetchWeather(city);
+  }, [city, fetchWeather]);
+  useEffect(() => {
+    fetchGlobal();
+  }, [fetchGlobal]);
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await Promise.all([fetchWeather(city), fetchGlobal()]);
+    } finally {
+      setRefreshing(false);
+      setUpdated(new Date());
+    }
+  }, [city, fetchWeather, fetchGlobal, refreshing]);
+  const banners = [];
+  const recentBig = (quakes?.items || []).filter(q => Date.now() - q.time < 72 * 3600e3);
+  if (recentBig.length) {
+    const top = recentBig.reduce((a, b) => a.mag >= b.mag ? a : b);
+    banners.push({
+      color: PALETTE.red,
+      icon: "🌍",
+      text: `Maanjäristys M ${fiNum(top.mag)} · ${top.place} · ${fiDT(top.time)} (72 h sisällä yhteensä ${recentBig.length} kpl ≥ 6,5 M)`,
+      go: "jaristykset"
+    });
+  }
+  if (alerts?.status === "ok" && alerts.items.length > 0) {
+    banners.push({
+      color: PALETTE.amber,
+      icon: "⚠️",
+      text: `Ilmatieteen laitos: ${alerts.items.length} säävaroitusta voimassa Suomessa`,
+      go: "varoitukset"
+    });
+  }
+  const kpNow = space?.kpSeries?.length ? space.kpSeries[space.kpSeries.length - 1].kp : null;
+  const gNow = space?.scales?.["0"]?.G?.Scale != null ? Number(space.scales["0"].G.Scale) : null;
+  if (gNow != null && gNow >= 2 || kpNow != null && kpNow >= 6) {
+    banners.push({
+      color: PALETTE.violet,
+      icon: "🌌",
+      text: `Geomagneettinen myrsky käynnissä (${gNow != null ? G_FI[gNow] : `Kp ${fiNum(kpNow)}`})`,
+      go: "avaruus"
+    });
+  }
+  if (lightning?.status === "ok" && lightning.count >= 100) {
+    banners.push({
+      color: PALETTE.amber,
+      icon: "⚡",
+      text: `Vilkasta ukkostoimintaa: ${lightning.count >= lightning.cap ? "yli " + lightning.cap : lightning.count} salamaa Suomessa tunnin sisällä`,
+      go: "tutkat"
+    });
+  }
+  const TABS = [["saa", "Sää & 15 vrk"], ["tutkat", "Tutkat"], ["avaruus", "Avaruussää"], ["jaristykset", "Maanjäristykset"], ["varoitukset", "Varoitukset"]];
+  return _jsxDEV("div", {
+    className: "app",
+    children: [_jsxDEV("style", {
+      children: `
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        .app {
+          min-height: 100vh; background: ${PALETTE.bg}; color: ${PALETTE.text};
+          font-family: "Segoe UI Variable Text","Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;
+          font-size: 15px; line-height: 1.45; padding-bottom: 40px;
+        }
+        .mono { font-family: ui-monospace,"SF Mono","Cascadia Mono",Consolas,monospace; font-variant-numeric: tabular-nums; }
+        .header {
+          position: relative; overflow: hidden; padding: 18px 16px 14px;
+          background: linear-gradient(150deg, #0C1626 0%, #0E1D33 55%, #10233B 100%);
+          border-bottom: 1px solid ${PALETTE.line};
+        }
+        .aurora {
+          position: absolute; top: -70px; right: -60px; width: 340px; height: 190px;
+          background: linear-gradient(100deg, ${PALETTE.green}, ${PALETTE.ice} 45%, ${PALETTE.violet});
+          filter: blur(52px); opacity: 0.22; border-radius: 50%;
+          animation: drift 14s ease-in-out infinite alternate; pointer-events: none;
+        }
+        @keyframes drift { from { transform: translateX(0) rotate(0deg); } to { transform: translateX(-60px) rotate(8deg); } }
+        @media (prefers-reduced-motion: reduce) { .aurora { animation: none; } .spinner { animation: none; } }
+        .title { font-weight: 800; font-size: 21px; letter-spacing: -0.02em; margin: 0; position: relative; }
+        .title .hash { background: linear-gradient(90deg, ${PALETTE.green}, ${PALETTE.violet}); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .subtitle { color: ${PALETTE.muted}; font-size: 12px; margin-top: 2px; position: relative; }
+        .searchbar { position: relative; margin-top: 12px; }
+        .searchbar input {
+          width: 100%; padding: 11px 14px; border-radius: 12px; border: 1px solid ${PALETTE.line};
+          background: ${PALETTE.surface}; color: ${PALETTE.text}; font-size: 15px; outline: none;
+        }
+        .searchbar input:focus-visible { border-color: ${PALETTE.green}; box-shadow: 0 0 0 2px ${PALETTE.green}44; }
+        .search-results {
+          position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 6px);
+          background: ${PALETTE.surface2}; border: 1px solid ${PALETTE.line}; border-radius: 12px; overflow: hidden;
+          box-shadow: 0 12px 30px #00000088;
+        }
+        .search-item { display: block; width: 100%; text-align: left; padding: 10px 14px; background: none; border: none; color: ${PALETTE.text}; font-size: 14px; cursor: pointer; }
+        .search-item:hover, .search-item:focus-visible { background: ${PALETTE.surface}; outline: none; }
+        .search-item small { color: ${PALETTE.muted}; }
+        .chips { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+        .chips::-webkit-scrollbar { display: none; }
+        .citychip {
+          flex: 0 0 auto; padding: 6px 12px; border-radius: 999px; border: 1px solid ${PALETTE.line};
+          background: ${PALETTE.surface}; color: ${PALETTE.text}; font-size: 13px; cursor: pointer;
+        }
+        .citychip[data-active="true"] { border-color: ${PALETTE.green}; color: ${PALETTE.green}; }
+        .banners { padding: 10px 16px 0; display: grid; gap: 8px; }
+        .banner {
+          display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 12px;
+          border: 1px solid; background: ${PALETTE.surface}; font-size: 13.5px; cursor: pointer; text-align: left; color: ${PALETTE.text}; width: 100%;
+        }
+        .tabs { display: flex; gap: 6px; padding: 12px 16px 4px; overflow-x: auto; scrollbar-width: none; position: sticky; top: 0; background: ${PALETTE.bg}EE; backdrop-filter: blur(6px); z-index: 20; }
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab {
+          flex: 0 0 auto; padding: 8px 14px; border-radius: 10px; border: 1px solid ${PALETTE.line};
+          background: ${PALETTE.surface}; color: ${PALETTE.muted}; font-size: 13.5px; font-weight: 600; cursor: pointer;
+        }
+        .tab[data-active="true"] { color: ${PALETTE.text}; border-color: ${PALETTE.green}; background: ${PALETTE.surface2}; }
+        .tab:focus-visible, .btn:focus-visible, .citychip:focus-visible, .banner:focus-visible { outline: 2px solid ${PALETTE.green}; outline-offset: 1px; }
+        .content { padding: 12px 16px; max-width: 900px; margin: 0 auto; }
+        .stack { display: grid; gap: 12px; }
+        .grid2 { display: grid; gap: 12px; grid-template-columns: 1fr; }
+        @media (min-width: 640px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+        .card { background: ${PALETTE.surface}; border: 1px solid ${PALETTE.line}; border-radius: 14px; padding: 14px; }
+        .eyebrow { text-transform: uppercase; letter-spacing: 0.09em; font-size: 10.5px; color: ${PALETTE.muted}; font-weight: 700; margin-bottom: 8px; }
+        .big { font-size: 26px; font-weight: 800; letter-spacing: -0.01em; }
+        .sub { color: ${PALETTE.muted}; font-size: 13px; margin-top: 4px; }
+        .now-grid { display: grid; gap: 12px; }
+        @media (min-width: 640px) { .now-grid { grid-template-columns: auto 1fr; gap: 24px; } }
+        .now-stats { display: grid; gap: 7px; }
+        .stat { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dashed ${PALETTE.line}; padding-bottom: 6px; }
+        .stat .k { color: ${PALETTE.muted}; font-size: 12.5px; }
+        .stat .v { font-size: 13.5px; text-align: right; }
+        .arrow { display: inline-block; transition: transform 0.4s; }
+        .dayscroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+        .daycard {
+          flex: 0 0 116px; background: ${PALETTE.surface2}; border: 1px solid ${PALETTE.line};
+          border-radius: 12px; padding: 10px; text-align: center;
+        }
+        .dc-day { font-size: 12px; color: ${PALETTE.muted}; font-weight: 700; }
+        .dc-emoji { font-size: 24px; margin: 4px 0; }
+        .dc-temp { font-size: 14px; }
+        .dc-row { font-size: 11px; color: ${PALETTE.muted}; margin-top: 3px; }
+        .chartbox { margin-top: 6px; }
+        .meter { position: relative; height: 10px; border-radius: 999px; background: ${PALETTE.surface2}; border: 1px solid ${PALETTE.line}; margin: 12px 0 4px; }
+        .meter-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, ${PALETTE.ice}, ${PALETTE.green}, ${PALETTE.violet}); }
+        .meter-dot { position: absolute; top: -9px; font-size: 18px; }
+        .aq-grid { display: grid; gap: 7px; }
+        .radar-controls { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        .select, .btn {
+          padding: 9px 12px; border-radius: 10px; border: 1px solid ${PALETTE.line};
+          background: ${PALETTE.surface2}; color: ${PALETTE.text}; font-size: 13.5px; cursor: pointer;
+        }
+        .btn:hover { border-color: ${PALETTE.green}; }
+        .btn:disabled { opacity: 0.55; cursor: wait; }
+        .radar-wrap { border-radius: 12px; overflow: hidden; border: 1px solid ${PALETTE.line}; background: #F4F7FA; }
+        .radar-img { width: 100%; display: block; }
+        .linkrow { display: flex; flex-wrap: wrap; gap: 8px; }
+        .linkchip {
+          padding: 8px 12px; border-radius: 10px; border: 1px solid ${PALETTE.line}; background: ${PALETTE.surface2};
+          color: ${PALETTE.ice}; text-decoration: none; font-size: 13px;
+        }
+        .linkchip:hover { border-color: ${PALETTE.ice}; }
+        .scalechips { display: flex; gap: 8px; flex-wrap: wrap; }
+        .chip { padding: 7px 12px; border-radius: 999px; border: 1px solid ${PALETTE.line}; background: ${PALETTE.surface2}; font-size: 13px; }
+        .fc3 { display: grid; gap: 10px; grid-template-columns: repeat(3, 1fr); }
+        .fc3-item { background: ${PALETTE.surface2}; border: 1px solid ${PALETTE.line}; border-radius: 10px; padding: 10px; text-align: center; }
+        .fc3-day { font-size: 11.5px; color: ${PALETTE.muted}; margin-bottom: 4px; }
+        .quakelist { display: grid; gap: 8px; }
+        .quakerow {
+          display: flex; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 10px;
+          background: ${PALETTE.surface2}; border: 1px solid ${PALETTE.line}; color: ${PALETTE.text}; text-decoration: none;
+        }
+        .magbadge { flex: 0 0 auto; color: #0A121F; font-weight: 800; padding: 6px 9px; border-radius: 8px; font-size: 14px; }
+        .qplace { font-size: 13.5px; display: grid; }
+        .qmeta { color: ${PALETTE.muted}; font-size: 12px; }
+        .alertrow { background: ${PALETTE.surface2}; border: 1px solid ${PALETTE.line}; border-left: 3px solid ${PALETTE.amber}; border-radius: 10px; padding: 10px 12px; }
+        .alerttitle { font-weight: 700; font-size: 14px; }
+        .errbox { background: #2A1620; border: 1px solid ${PALETTE.red}66; color: #FFC7C7; border-radius: 10px; padding: 10px 12px; font-size: 13.5px; }
+        .spin-row { display: flex; align-items: center; gap: 10px; color: ${PALETTE.muted}; font-size: 14px; }
+        .spinner {
+          width: 16px; height: 16px; border-radius: 50%; border: 2px solid ${PALETTE.line};
+          border-top-color: ${PALETTE.green}; animation: rot 0.9s linear infinite;
+        }
+        @keyframes rot { to { transform: rotate(360deg); } }
+        .footer { color: ${PALETTE.muted}; font-size: 11.5px; padding: 18px 16px 0; max-width: 900px; margin: 0 auto; }
+        .refresh-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px 0; max-width: 900px; margin: 0 auto; }
+        .updated { color: ${PALETTE.muted}; font-size: 12px; }
+      `
+    }, void 0, false), _jsxDEV("header", {
+      className: "header",
+      children: [_jsxDEV("div", {
+        className: "aurora"
+      }, void 0, false), _jsxDEV("h1", {
+        className: "title",
+        children: [_jsxDEV("span", {
+          className: "hash",
+          children: "#AI-Kimmo"
+        }, void 0, false), " Sää"]
+      }, void 0, true), _jsxDEV("div", {
+        className: "subtitle",
+        children: "Pohjoismainen sää- ja tilannekuvakonsoli · Open-Meteo · yr.no · Ilmatieteen laitos · NOAA · USGS"
+      }, void 0, false), _jsxDEV("div", {
+        className: "searchbar",
+        children: [_jsxDEV("input", {
+          type: "search",
+          value: query,
+          placeholder: "Hae kaupunki (esim. Kuopio, Tromssa, Dar es Salaam)…",
+          onChange: e => setQuery(e.target.value),
+          "aria-label": "Hae kaupunki"
+        }, void 0, false), (results.length > 0 || searching) && query.length >= 2 && _jsxDEV("div", {
+          className: "search-results",
+          children: [searching && _jsxDEV("div", {
+            className: "search-item",
+            children: "Haetaan…"
+          }, void 0, false), results.map(r => _jsxDEV("button", {
+            className: "search-item",
+            onClick: () => {
+              setCity({
+                name: r.name,
+                latitude: r.latitude,
+                longitude: r.longitude,
+                country_code: r.country_code,
+                admin1: r.admin1 || ""
+              });
+              setQuery("");
+              setResults([]);
+            },
+            children: [r.name, " ", _jsxDEV("small", {
+              children: ["· ", [r.admin1, r.country].filter(Boolean).join(", ")]
+            }, void 0, true)]
+          }, r.id, true)), !searching && results.length === 0 && _jsxDEV("div", {
+            className: "search-item",
+            children: "Ei osumia."
+          }, void 0, false)]
+        }, void 0, true)]
+      }, void 0, true), _jsxDEV("div", {
+        className: "chips",
+        children: QUICK.map(c => _jsxDEV("button", {
+          className: "citychip",
+          "data-active": city.name === c.name,
+          onClick: () => setCity(c),
+          children: c.name
+        }, c.name, false))
+      }, void 0, false)]
+    }, void 0, true), banners.length > 0 && _jsxDEV("div", {
+      className: "banners",
+      children: banners.map((b, i) => _jsxDEV("button", {
+        className: "banner",
+        style: {
+          borderColor: b.color
+        },
+        onClick: () => setTab(b.go),
+        children: [_jsxDEV("span", {
+          "aria-hidden": "true",
+          children: b.icon
+        }, void 0, false), _jsxDEV("span", {
+          children: b.text
+        }, void 0, false)]
+      }, i, true))
+    }, void 0, false), _jsxDEV("nav", {
+      className: "tabs",
+      "aria-label": "Osiot",
+      children: TABS.map(([k, label]) => _jsxDEV("button", {
+        className: "tab",
+        "data-active": tab === k,
+        onClick: () => setTab(k),
+        children: label
+      }, k, false))
+    }, void 0, false), _jsxDEV("div", {
+      className: "refresh-row",
+      children: [_jsxDEV("span", {
+        className: "updated",
+        children: ["Päivitetty ", updated ? updated.toLocaleTimeString("fi-FI") : "–"]
+      }, void 0, true), _jsxDEV("button", {
+        className: "btn",
+        onClick: handleRefresh,
+        disabled: refreshing,
+        children: refreshing ? "⟳ Päivitetään…" : "⟳ Päivitä kaikki"
+      }, void 0, false)]
+    }, void 0, true), _jsxDEV("main", {
+      className: "content",
+      children: [tab === "saa" && _jsxDEV(WeatherTab, {
+        city: city,
+        om: om,
+        yr: yr,
+        fmi: fmi,
+        aq: aq,
+        loading: wxLoading && !om,
+        err: wxErr
+      }, void 0, false), tab === "tutkat" && _jsxDEV(RadarTab, {
+        lightning: lightning
+      }, void 0, false), tab === "avaruus" && _jsxDEV(SpaceTab, {
+        space: space
+      }, void 0, false), tab === "jaristykset" && _jsxDEV(QuakeTab, {
+        quakes: quakes
+      }, void 0, false), tab === "varoitukset" && _jsxDEV(AlertsTab, {
+        alerts: alerts
+      }, void 0, false)]
+    }, void 0, true), _jsxDEV("footer", {
+      className: "footer",
+      children: "Tietolähteet: Open-Meteo (ennusteet, geokoodaus, ilmanlaatu · CC BY 4.0), MET Norja / yr.no (Locationforecast · NLOD), Ilmatieteen laitoksen avoin data (havainnot, tutka-WMS, salamat, varoitukset · CC BY 4.0), NOAA SWPC (avaruussää), USGS (maanjäristykset). Ennusteisiin ja indekseihin liittyy epävarmuutta – tarkista varoitukset aina virallisista lähteistä."
+    }, void 0, false)]
+  }, void 0, true);
+}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(AiKimmoSaa));
+document.getElementById("root").dataset.mounted = "true";</script>
+</body>
+</html>
